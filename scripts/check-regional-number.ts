@@ -65,14 +65,15 @@ console.log('\nONE NUMBER, OR NO RULES: EXACTLY AS BEFORE')
   check(p?.phoneNumber === META && p.why === 'platform', 'a Meta visitor still gets the Meta number')
 }
 
-console.log('\nSPEEDY: CITY PAGE, THEN CAMPAIGN, THEN SAN DIEGO')
+console.log('\nSPEEDY: CAMPAIGN (WHEN IT HAS A RULE), THEN CITY PAGE, THEN SAN DIEGO')
 {
   const pick = (area: string | null, adCampaignId: string | null, platform: string | null = null) =>
     pickSiteNumber(speedy, { platform, area, adCampaignId })
   check(pick('Riverside', null)?.phoneNumber === RIV, 'Riverside city page → Riverside line')
   check(pick('riverside county', null)?.phoneNumber === RIV, 'matched without case')
   check(pick('Irvine', null)?.phoneNumber === LA, 'Irvine city page → LA/OC line')
-  check(pick('Irvine', SD_CAMPAIGN)?.phoneNumber === LA, 'a city page beats the campaign (the owner’s order)')
+  check(pick('Irvine', SD_CAMPAIGN)?.phoneNumber === LA, 'a campaign with NO rule of its own leaves the city page in charge')
+  check(pick('Riverside', LA_OC_CAMPAIGN)?.phoneNumber === LA, 'a campaign WITH a rule beats the city page (reversed 2026-11-01)')
   check(pick(null, LA_OC_CAMPAIGN)?.phoneNumber === LA, 'a shared page, clicked from the LA+OC campaign → LA/OC line')
   check(pick(null, SD_CAMPAIGN)?.phoneNumber === SD, 'a shared page, from the SD campaign → the default (SD)')
   check(pick(null, null)?.phoneNumber === SD, 'organic on a shared page → SD')
@@ -106,53 +107,51 @@ console.log('\nTHE CAMPAIGN ID ON THE LANDING')
   check(adCampaignFromHeader('24069310556') === '24069310556' && adCampaignFromHeader('<script>') === null, 'the header reader takes digits only')
 }
 
-console.log('\nRIVERSIDE INSIDE THE LA+OC CAMPAIGN: THE LANDING PAGE DECIDES')
+console.log('\nTWO NUMBERS (2026-11-01): THE CAMPAIGN DECIDES ON EVERY PAGE, THEN THE PAGE')
 {
-  const now = Date.UTC(2026, 10, 2)
-  // A Riverside ad group in the LA+OC campaign lands on a Riverside city page.
-  const riv = mergeTouch(null, {
-    url: `https://speedy.glassleads.app/auto-glass-repair-temecula?gclid=abc&gad_campaignid=${LA_OC_CAMPAIGN}`,
-    referrer: 'https://www.google.com/',
-    now,
-  }).touch
-  check(landingCitySlug(riv) === 'temecula', 'the landing city is read off the path')
-  const speedyAll = [
-    n(SD, { useOnSite: true }),
-    n(LA, { showForAreas: ['Orange County', 'Irvine', 'Los Angeles County'], adCampaignIds: [LA_OC_CAMPAIGN] }),
-    n(RIV, { showForAreas: ['Riverside County', 'Riverside', 'Temecula', 'Moreno Valley', 'Lake Elsinore'] }),
+  // Speedy as configured: San Diego is the default and claims its own pages
+  // and both SD campaigns; LA/OC/Riverside is one campaign and one number.
+  const SD_PMAX = '22813715986'
+  const two = [
+    n(SD, { useOnSite: true, showForAreas: ['San Diego', 'La Jolla', 'Chula Vista'], adCampaignIds: [SD_CAMPAIGN, SD_PMAX] }),
+    n(LA, {
+      showForAreas: ['Orange County', 'Irvine', 'Los Angeles County', 'Riverside County', 'Riverside', 'Temecula', 'Corona'],
+      adCampaignIds: [LA_OC_CAMPAIGN],
+    }),
   ]
-  const onService = (touch: typeof riv) =>
-    pickSiteNumber(speedyAll, { platform: null, area: null, adCampaignId: adCampaignFor(touch), landingCity: landingCitySlug(touch) })
-  check(onService(riv)?.phoneNumber === RIV && onService(riv)?.why === 'landing', 'then a SERVICE page → Riverside line, not the campaign’s 949')
-  // The visitor clicks around: the landing is kept.
-  const later = mergeTouch(decodeTouch(encodeTouch(riv)), {
-    url: 'https://speedy.glassleads.app/windshield-replacement',
-    referrer: 'https://speedy.glassleads.app/auto-glass-repair-temecula',
-    now: now + 60_000,
-  }).touch
-  check(landingCitySlug(later) === 'temecula' && onService(later)?.phoneNumber === RIV, 'it survives the cookie and clicking around')
-  // An Irvine click in the same campaign still gets LA/OC.
-  const irv = mergeTouch(null, {
-    url: `https://speedy.glassleads.app/auto-glass-repair-irvine?gclid=def&gad_campaignid=${LA_OC_CAMPAIGN}`,
-    referrer: 'https://www.google.com/',
-    now,
-  }).touch
-  check(onService(irv)?.phoneNumber === LA, 'an Irvine landing in the same campaign → LA/OC line')
-  // Landing on a service page: the campaign decides, as before.
-  const svc = mergeTouch(null, {
-    url: `https://speedy.glassleads.app/windshield-replacement?gclid=ghi&gad_campaignid=${LA_OC_CAMPAIGN}`,
-    referrer: 'https://www.google.com/',
-    now,
-  }).touch
-  check(landingCitySlug(svc) === null && onService(svc)?.phoneNumber === LA, 'a service-page landing → the campaign’s number, unchanged')
-  // The current page still wins: a Riverside visitor opening the Irvine page sees Irvine's line.
-  check(
-    pickSiteNumber(speedyAll, { platform: null, area: 'Irvine', adCampaignId: LA_OC_CAMPAIGN, landingCity: 'temecula' })?.phoneNumber === LA,
-    'the page they are ON beats where they landed'
-  )
-  // Organic landing on a city page counts too.
-  const org = mergeTouch(null, { url: 'https://speedy.glassleads.app/auto-glass-repair-moreno-valley', referrer: 'https://www.google.com/', now }).touch
-  check(onService(org)?.phoneNumber === RIV, 'an ORGANIC landing on a Riverside page → Riverside line on the service pages')
+  const now = Date.UTC(2026, 10, 2)
+  const visit = (path: string, referrer = 'https://www.google.com/') =>
+    mergeTouch(null, { url: `https://speedy.glassleads.app${path}`, referrer, now }).touch
+  const next = (prev: ReturnType<typeof visit>, path: string) =>
+    mergeTouch(decodeTouch(encodeTouch(prev)), {
+      url: `https://speedy.glassleads.app${path}`,
+      referrer: 'https://speedy.glassleads.app/',
+      now: now + 60_000,
+    }).touch
+  const on = (touch: ReturnType<typeof visit>, area: string | null = null) =>
+    pickSiteNumber(two, { platform: null, area, adCampaignId: adCampaignFor(touch), landingCity: landingCitySlug(touch) })?.phoneNumber
+
+  // The acceptance tests, in the task's own numbering.
+  const t1 = visit(`/windshield-replacement?gad_campaignid=${LA_OC_CAMPAIGN}`)
+  check(on(t1) === LA, '1. /windshield-replacement from LA+OC+Riverside → 949')
+  check(on(next(t1, '/rock-chip-repair')) === LA, '1. …and still 949 on the next page')
+  check(on(next(t1, '/auto-glass-repair-san-diego'), 'San Diego') === LA, '1. …even on a San Diego city page: the campaign beats the page')
+  check(on(visit(`/auto-glass-repair-temecula?gad_campaignid=${LA_OC_CAMPAIGN}`), 'Temecula') === LA, '2. Temecula from LA+OC+Riverside → 949')
+  check(on(visit(`/windshield-repair?gad_campaignid=${SD_CAMPAIGN}`)) === SD, '3. SD Search → 619')
+  check(on(visit(`/windshield-repair?gad_campaignid=${SD_PMAX}`)) === SD, '4. SD PMax → 619')
+  const sdAd = visit(`/windshield-repair?gad_campaignid=${SD_CAMPAIGN}`)
+  check(on(next(sdAd, '/auto-glass-repair-irvine'), 'Irvine') === SD, '3. …an SD ad click opening the Irvine page keeps 619')
+  const t5 = visit('/auto-glass-repair-riverside')
+  check(on(t5, 'Riverside') === LA, '5. Riverside page, organic → 949')
+  check(on(next(t5, '/windshield-replacement')) === LA, '5. …then /windshield-replacement → still 949')
+  check(on(visit('/auto-glass-repair-orange-county'), 'Orange County') === LA, '6. Orange County page, organic → 949')
+  check(on(visit('/windshield-replacement')) === SD, '7. /windshield-replacement, fresh organic → 619')
+  check(on(next(t5, '/auto-glass-repair-la-jolla'), 'La Jolla') === SD, 'organic: the page they are ON beats where they landed')
+  // The retired campaign has no rule: a click from it falls to the page.
+  check(on(visit('/windshield-replacement?gad_campaignid=24425965345')) === SD, 'the retired Riverside campaign → no rule, the page decides (619)')
+  check(on(visit('/auto-glass-repair-corona?gad_campaignid=24425965345'), 'Corona') === LA, '…and on a Riverside page, 949')
+  check(!two.some((x) => x.phoneNumber === RIV), 'no number in the setup is the retired 951')
+  check(landingCitySlug(visit('/auto-glass-repair-temecula')) === 'temecula', 'the landing city is read off the path')
   // The other city shapes, and things that are not city pages.
   check(landingCitySlug({ landingPage: 'https://x.test/locations/lake-elsinore' }) === 'lake-elsinore', '/locations/{city} is read')
   check(landingCitySlug({ landingPage: 'https://glassleads.app/sites/speedy/auto-glass-repair-riverside-county' }) === 'riverside-county', 'the preview path is read')

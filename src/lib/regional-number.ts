@@ -10,26 +10,27 @@
  *   1. An ad platform's own number (Microsoft, Meta) for that platform's
  *      visitors — unchanged, and first, because it is what attributes a call
  *      that carries no click id (lib/traffic-source.ts).
- *   2. A CITY PAGE shows its region's number: the page is about that place,
- *      and a local line on it is the point. Matched on the page's area name
- *      against the number's `showForAreas`.
- *   2b. On a shared page, the region of the CITY PAGE THE VISIT LANDED ON.
- *      Speedy's owner put Riverside inside the LA+OC campaign, so the
- *      campaign alone can no longer tell a Riverside click from an Irvine one —
- *      but the Riverside ad groups land on the Riverside pages, so the landing
- *      page can. Remembered in the landing cookie, so a visitor who arrives on
- *      /auto-glass-repair-temecula and then opens /windshield-replacement keeps
- *      the Riverside line. Organic visits count too: somebody who lands on the
- *      Temecula page from a search is no less in Temecula. Nothing to set per ad
- *      group — it reuses `showForAreas`, matched by the page's URL slug.
- *   3. On a shared page (home, a service page, the claims page) an AD CLICK
- *      shows the number of the campaign it came from — `gad_campaignid`, which
- *      Google adds to every ad click, remembered in the landing cookie for the
- *      visit like the platform is. Matched against `adCampaignIds`.
- *   4. Everyone else — organic, direct, the Business Profile — sees the
- *      default (`useOnSite`), as always.
+ *   2. AN AD CLICK shows the number of the campaign it came from, ON EVERY
+ *      PAGE — `gad_campaignid`, which Google adds to every ad click,
+ *      remembered in the landing cookie for the visit like the platform is.
+ *      Matched against `adCampaignIds`.
+ *      THIS USED TO COME AFTER THE CITY PAGE, and the owner reversed it
+ *      (2026-11-01). A Google Ads campaign can carry one call number reliably —
+ *      with two call assets Google picks which shows, and not by where the
+ *      searcher is — so the campaign IS the region: the caller must see the
+ *      number from the ad's call button on the landing page and on every page
+ *      after, or the call is credited to the wrong campaign. Speedy folded
+ *      Riverside into LA+OC for exactly that reason.
+ *   3. With no campaign rule: a CITY PAGE shows its region's number, matched
+ *      on the page's area name against the number's `showForAreas`.
+ *   4. Then, on a shared page, the region of the CITY PAGE THE VISIT LANDED ON
+ *      — remembered in the landing cookie, so an organic visitor who arrives on
+ *      /auto-glass-repair-temecula and opens /windshield-replacement keeps that
+ *      region's line. Matched by URL slug against the same `showForAreas`, so
+ *      there is nothing to set per page.
+ *   5. Everyone else sees the default (`useOnSite`), as always.
  *
- * A shop with one number has no rules set, so steps 2 and 3 never match and
+ * A shop with one number has no rules set, so steps 2–4 never match and
  * everything reads exactly as before.
  */
 
@@ -95,6 +96,11 @@ export function pickSiteNumber(
     const own = numbers.find((n) => n.showTo === ctx.platform)
     if (own) return { phoneNumber: own.phoneNumber, why: 'platform' }
   }
+  // The campaign BEFORE the page — see step 2 in the header for why.
+  if (ctx.adCampaignId) {
+    const byCampaign = numbers.find((n) => n.adCampaignIds.includes(ctx.adCampaignId!))
+    if (byCampaign) return { phoneNumber: byCampaign.phoneNumber, why: 'campaign' }
+  }
   if (ctx.area) {
     const area = norm(ctx.area)
     const byArea = numbers.find((n) => n.showForAreas.some((a) => norm(a) === area))
@@ -104,10 +110,6 @@ export function pickSiteNumber(
     const slug = ctx.landingCity
     const byLanding = numbers.find((n) => n.showForAreas.some((a) => areaSlug(a) === slug))
     if (byLanding) return { phoneNumber: byLanding.phoneNumber, why: 'landing' }
-  }
-  if (ctx.adCampaignId) {
-    const byCampaign = numbers.find((n) => n.adCampaignIds.includes(ctx.adCampaignId!))
-    if (byCampaign) return { phoneNumber: byCampaign.phoneNumber, why: 'campaign' }
   }
   const def = numbers.find((n) => n.useOnSite)
   return def ? { phoneNumber: def.phoneNumber, why: 'default' } : null

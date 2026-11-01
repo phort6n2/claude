@@ -236,16 +236,23 @@ arrive from the hosted sites' own form and from embedded widgets.
   / `adCampaignIds`, bootstrap: `REGIONAL_NUMBER_SQL`, the "Region" fields on
   a number in Lead delivery → Call tracking; `scripts/check-regional-number.ts`).
   Speedy runs San Diego, LA/OC and Riverside lines, and the site showed one
-  default number everywhere. The owner's order: the platform number for
-  Microsoft/Meta visitors (unchanged), then a CITY PAGE's own region, then on
-  shared pages the region of the CITY PAGE THE VISIT LANDED ON (`x-gl-lc`,
-  `landingCitySlug`, matched by URL slug against `showForAreas` — so nothing is
-  set per ad group: the owner folded Riverside INTO the LA+OC campaign, and only
-  the landing page can tell a Riverside click from an Irvine one; organic city
-  landings count too), then the AD CAMPAIGN the click came from — `gad_campaignid`, which
+  default number everywhere. The owner's order (REVISED 2026-11-01 — Speedy is
+  now TWO numbers: 619 San Diego, 949 for LA, OC and Riverside; the 951 line is
+  retired): the platform number for Microsoft/Meta visitors (unchanged), then
+  the AD CAMPAIGN the click came from ON EVERY PAGE — `gad_campaignid`, which
   Google adds to ad clicks, kept in the `gl_src` cookie and handed over as
-  `x-gl-cid`, overwritten by middleware exactly like `x-gl-src` — then the
-  default. **Google's call swap is told the number the page SHOWS**
+  `x-gl-cid`, overwritten by middleware exactly like `x-gl-src`. **The campaign
+  outranks the city page now, and that reversal is deliberate**: a campaign can
+  carry one call number reliably (with two call assets Google picks which, and
+  not by searcher location), so the caller must see the ad's number on the
+  landing page and every page after or the call credits the wrong campaign.
+  Then a CITY PAGE's own region, then on shared pages the region of the CITY
+  PAGE THE VISIT LANDED ON (`x-gl-lc`, `landingCitySlug`, matched by URL slug
+  against `showForAreas` — nothing set per page; organic city landings stay
+  sticky), then the default. The default number can carry region fields too
+  (the card hid them once, so San Diego's own pages could not be set).
+  `googleCallNumber` is now the displayed number for every pick but a platform
+  one, the default included. **Google's call swap is told the number the page SHOWS**
   (`googleCallNumber` → `<GoogleTag callNumber>`), or it finds nothing to
   replace on a regional page and those calls go uncounted. A shop with no
   regional rules reads byte-for-byte as before.

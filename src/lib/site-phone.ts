@@ -135,11 +135,13 @@ export async function withSitePhone<
     if (picked && display) {
       // GOOGLE'S CALL SWAP has to be told the number THIS page shows, or it
       // finds nothing to replace and the calls a regional number takes from
-      // Google's visitors go uncounted. Only for a regional pick: the default
-      // is what the configured snippet already names, and a platform number
-      // is shown to visitors Google did not send.
-      const googleCallNumber =
-        picked.why === 'area' || picked.why === 'landing' || picked.why === 'campaign' ? display : null
+      // Google's visitors go uncounted. The default is told explicitly too,
+      // rather than trusting the pasted snippet to name the same number — the
+      // rule is one number per page, everywhere it appears, and a snippet
+      // pasted for an older number would otherwise be the one place it differs.
+      // Not for a platform number: those are shown to visitors Google did not
+      // send, and Google's own config is left exactly as it was for them.
+      const googleCallNumber = picked.why === 'platform' ? null : display
       return { ...client, phone: display, callbackPhone, googleCallNumber }
     }
   } catch {
