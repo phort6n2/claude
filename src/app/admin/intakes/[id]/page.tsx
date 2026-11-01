@@ -37,7 +37,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <div className="px-6 pt-5 pb-1">
           <h2 className="font-semibold text-gray-900">What they told us</h2>
           <p className="text-sm text-gray-500">
-            Correct anything wrong before approving — what is on this screen is what gets saved
+            {intake.status === 'APPROVED'
+              ? 'Approved — this is what they submitted, read-only. Change the client record itself to correct anything.'
+              : 'Correct anything wrong before approving — what is on this screen is what gets saved'}
           </p>
         </div>
         <IntakeReview

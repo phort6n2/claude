@@ -258,12 +258,25 @@ export default function IntakesManager({
               )}
 
               {intake.status === 'APPROVED' && intake.clientId ? (
-                <Link
-                  href={`/admin/clients/${intake.clientId}`}
-                  className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
-                >
-                  Open client
-                </Link>
+                // BOTH links once approved. This used to be "Open client" alone,
+                // so the moment a form was approved what the shop actually typed
+                // became unreachable — and the answers are the only record of
+                // fields approval did not copy, or copied somewhere unexpected
+                // (the Google Ads account number lands on the Advertising tab).
+                <>
+                  <Link
+                    href={`/admin/intakes/${intake.id}`}
+                    className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+                  >
+                    View answers
+                  </Link>
+                  <Link
+                    href={`/admin/clients/${intake.clientId}`}
+                    className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+                  >
+                    Open client
+                  </Link>
+                </>
               ) : (
                 <Link
                   href={`/admin/intakes/${intake.id}`}
