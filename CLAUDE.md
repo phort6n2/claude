@@ -305,6 +305,12 @@ arrive from the hosted sites' own form and from embedded widgets.
   same `traffic` the lead row stores. The payload carried traffic_source, UTMs
   and click ids and nothing NAMED source, so HighLevel's contact Source stayed
   blank — Auto Glass Kings' report. A sender's own `source` is never replaced.
+  **The link's own `utm_source` names what the platform verdict cannot**: AGK's
+  first real lead was their Irvine Business Profile (`gbp_irvine`, organic),
+  which the platform reads as "other" and forwarded as "Other website". A
+  `gbp`/`gmb`/`google_business…` tag on an unpaid visit is now "Google Business
+  Profile", known tags (yelp, nextdoor…) are named, and an unknown safe tag
+  passes through as typed.
 - **CALLS ARE FORWARDED ONLY TO A DESTINATION THAT OPTED IN** (`sendCalls`,
   bootstrap `WEBHOOK_CALLS_SQL`, the "Also send tracked calls" tick), because a
   workflow built for forms may auto-text whoever arrives and a caller who has

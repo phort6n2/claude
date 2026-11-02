@@ -30,6 +30,32 @@ export interface SourceFacts {
   trafficSource?: string | null
   /** `Lead.trafficMedium`: paid | organic | social | referral | email | other | none */
   trafficMedium?: string | null
+  /** The visit's `utm_source`, when it had one — names the place the platform verdict cannot. */
+  utmSource?: string | null
+}
+
+/**
+ * A BUSINESS PROFILE LINK IS NAMED FOR WHAT IT IS. Shops tag the website link
+ * on their Google Business Profile (AGK's reads `utm_source=gbp_irvine&
+ * utm_medium=organic`), and the platform verdict for that visit is "other" —
+ * a UTM from a source it does not know — so the first real forwarded lead
+ * told Andrew it came from "Other website" when it came from his own Irvine
+ * listing. Matched on the common spellings, any suffix (one per location).
+ */
+const BUSINESS_PROFILE_UTM = /^(gbp|gmb|google[-_ ]?(my[-_ ]?)?business([-_ ]?profile)?)([-_ ].*)?$/i
+
+/** Sources a shop tags links with, in the words a shop owner uses. */
+const NAMED_UTM_SOURCES: Record<string, string> = {
+  yelp: 'Yelp',
+  nextdoor: 'Nextdoor',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  fb: 'Facebook',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  bing: 'Bing',
+  newsletter: 'Email',
+  email: 'Email',
 }
 
 /** A form lead's source, from what the app recorded about the visit. */
@@ -37,6 +63,11 @@ export function leadSourceLabel(facts: SourceFacts): string {
   const source = (facts.trafficSource || '').toLowerCase()
   const medium = (facts.trafficMedium || '').toLowerCase()
   const paid = medium === 'paid'
+  const utm = (facts.utmSource || '').trim()
+  // A Business Profile link beats the platform verdict: an ad click is never
+  // tagged like this, and "Google (organic)" would hide the one fact the shop
+  // can act on — which listing is sending people.
+  if (utm && !paid && BUSINESS_PROFILE_UTM.test(utm)) return 'Google Business Profile'
   switch (source) {
     case 'google':
       return paid ? 'Google Ads' : 'Google (organic)'
@@ -46,12 +77,19 @@ export function leadSourceLabel(facts: SourceFacts): string {
       return paid ? 'Facebook Ads' : 'Facebook'
     case 'direct':
       return 'Direct'
-    case 'other':
+    case 'other': {
+      // The tag the shop put on the link says more than "other" ever can.
+      const named = NAMED_UTM_SOURCES[utm.toLowerCase()]
+      if (named) return paid ? `${named} Ads` : named
       if (paid) return 'Other ads'
       if (medium === 'social') return 'Social media'
       if (medium === 'email') return 'Email'
       if (medium === 'referral') return 'Referral'
+      // An unknown tag is still the shop's own word for where the link was —
+      // pass it through rather than flatten it to "Other website".
+      if (utm && /^[\w .-]{1,40}$/.test(utm)) return utm
       return 'Other website'
+    }
     default:
       return 'Website'
   }

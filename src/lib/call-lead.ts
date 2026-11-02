@@ -283,7 +283,7 @@ async function forwardCall(
       !earliest.isEarliest && earliest.earliestId
         ? await prisma.lead.findUnique({
             where: { id: earliest.earliestId },
-            select: { trafficSource: true, trafficMedium: true },
+            select: { trafficSource: true, trafficMedium: true, utmSource: true },
           })
         : null
     const source = callSourceLabel(number, earlier)

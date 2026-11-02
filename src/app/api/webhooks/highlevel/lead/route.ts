@@ -848,7 +848,7 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
         // the CRM and this app agree. Added only when the sender did not
         // already supply one: a post that arrived with its own `source` is
         // forwarded as it came.
-        ...(payloadWithoutHeaders.source == null ? { source: leadSourceLabel({ trafficSource: traffic.source, trafficMedium: traffic.medium }) } : {}),
+        ...(payloadWithoutHeaders.source == null ? { source: leadSourceLabel({ trafficSource: traffic.source, trafficMedium: traffic.medium, utmSource: finalUtmSource }) } : {}),
         lead_type: leadSource === 'PHONE' ? 'call' : 'form',
       })
       if (deliveryIds.length > 0) {

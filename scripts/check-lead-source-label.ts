@@ -53,6 +53,35 @@ for (const [s, m, want] of cases) {
   check(got === want, `${s}/${m} → ${want}${got === want ? '' : ` (got ${got})`}`)
 }
 
+console.log('\nTAGGED LINKS (utm_source)')
+const utmCases: Array<[string | null, string | null, string | null, string]> = [
+  // AGK's real forwarded lead: their Irvine listing's website link.
+  ['other', 'organic', 'gbp_irvine', 'Google Business Profile'],
+  ['google', 'organic', 'gbp', 'Google Business Profile'],
+  ['other', null, 'GMB-huntington-beach', 'Google Business Profile'],
+  ['other', 'organic', 'google_business_profile', 'Google Business Profile'],
+  ['other', 'organic', 'googlemybusiness', 'Google Business Profile'],
+  // An ad is never a listing, whatever the tag says.
+  ['google', 'paid', 'gbp_irvine', 'Google Ads'],
+  // Not a GBP tag just because it starts with the letters.
+  ['other', 'referral', 'gbpartners', 'Referral'],
+  ['other', 'referral', 'yelp', 'Yelp'],
+  ['other', 'paid', 'yelp', 'Yelp Ads'],
+  ['other', 'social', 'nextdoor', 'Nextdoor'],
+  ['other', null, 'church_bulletin', 'church_bulletin'],
+  ['other', null, '<script>', 'Other website'],
+  ['other', null, '', 'Other website'],
+]
+for (const [s, m, u, want] of utmCases) {
+  const got = leadSourceLabel({ trafficSource: s, trafficMedium: m, utmSource: u })
+  check(got === want, `${s}/${m}/${u} → ${want}${got === want ? '' : ` (got ${got})`}`)
+}
+check(
+  callSourceLabel({ showTo: null }, { trafficSource: 'other', trafficMedium: 'organic', utmSource: 'gbp_irvine' }) ===
+    'Google Business Profile',
+  'a GBP form earlier today, then a call → Google Business Profile'
+)
+
 if (failures) {
   console.log(`\n${failures} FAILED`)
   process.exit(1)
