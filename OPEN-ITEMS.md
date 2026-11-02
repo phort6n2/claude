@@ -240,6 +240,7 @@ You have ruled this out for now and I have not built any. Worth revisiting: an i
 | First Twilio coaching transcript | Recordings are dual-channel; the pipeline was written for HighLevel's mono files. If speakers are attributed oddly, that is why, and it is a one-line change. | First real tracked call |
 | First real damage-photo upload | The success path was tested with the upload intercepted — Blob has no token in a dev environment. | First submission on a live site |
 | The 405 on a client's outbound webhook | Was failing before the destination was disabled. Moot while off; re-check if you re-enable it. | If re-enabled |
+| Search Console's **Generative AI report** in the API | Google shows AI Overviews / AI Mode impressions in the Search Console UI (all sites since 31 Aug 2026), but `searchanalytics.query` has no way to ask for them — no AI `type`, no dimension. The owner chose to WAIT rather than build a manual CSV upload (decided 2026-11-01). When it lands it joins the nightly fetch in `site-analytics.ts` as one more Traffic section; impressions only, no clicks. A scheduled task checks Google's docs on the 3rd of each month. | Monthly, until it appears |
 
 ---
 
