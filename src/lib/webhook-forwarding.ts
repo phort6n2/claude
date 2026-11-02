@@ -89,11 +89,13 @@ export function normalizeAllowedOrigins(entries: unknown): { origins: string[]; 
 export async function createDeliveriesForLead(
   clientId: string,
   leadId: string,
-  payload: unknown
+  payload: unknown,
+  /** A CALL only goes to destinations that opted in (`sendCalls`). */
+  opts: { kind?: 'form' | 'call' } = {}
 ): Promise<string[]> {
   try {
     const destinations = await prisma.webhookDestination.findMany({
-      where: { clientId, enabled: true },
+      where: { clientId, enabled: true, ...(opts.kind === 'call' ? { sendCalls: true } : {}) },
       select: { id: true },
     })
     if (destinations.length === 0) return []

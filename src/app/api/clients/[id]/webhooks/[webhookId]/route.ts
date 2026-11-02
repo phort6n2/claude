@@ -27,7 +27,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Destination not found' }, { status: 404 })
     }
 
-    const data: { label?: string; url?: string; enabled?: boolean } = {}
+    const data: { label?: string; url?: string; enabled?: boolean; sendCalls?: boolean } = {}
+    if (typeof body.sendCalls === 'boolean') data.sendCalls = body.sendCalls
 
     if (typeof body.label === 'string') {
       const label = body.label.trim()

@@ -72,6 +72,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       source_label: 'Landing page',
       lead_summary: 'Test Lead needs windshield replacement on a 2020 Hyundai Santa Fe.',
 
+      // Where the lead came from, readably (lib/lead-source-label.ts) — the
+      // field to map to the CRM's own Source. And whether it is a form or a
+      // call, so a workflow can branch before it auto-messages anybody.
+      source: 'Google Ads',
+      lead_type: 'form',
+
+      // Only a forwarded CALL fills these (call-lead.ts, for destinations
+      // with "Also send tracked calls" on). Sent empty so they can be mapped
+      // before the first call arrives.
+      call_outcome: '',
+      call_status: '',
+      call_duration_seconds: '',
+      tracking_number: '',
+      tracking_number_label: '',
+      repeat_contact_today: '',
+
       // Origin
       form_name: 'glassleads-widget',
       contact_source: 'glassleads.app webhook test',

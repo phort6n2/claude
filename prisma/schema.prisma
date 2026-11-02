@@ -687,6 +687,11 @@ model WebhookDestination {
   label   String // e.g. "HighLevel — Collision workflow"
   url     String // https destination the lead payload is POSTed to
   enabled Boolean @default(true)
+  // Also forward tracked CALLS (call-lead.ts). Off by default: a workflow
+  // built for form leads may auto-text or email whoever it receives, and a
+  // caller who has already spoken to the shop must not get "thanks for your
+  // quote request". Bootstrap: WEBHOOK_CALLS_SQL.
+  sendCalls Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

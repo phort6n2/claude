@@ -7,6 +7,10 @@ import { outcomeUrlFor } from '@/lib/lead-outcome-token'
 import { trafficSourceForNumber } from '@/lib/traffic-source'
 import { queueMetaPhoneLead } from '@/lib/meta-capi'
 import { alertEntry, recordAlert } from '@/lib/lead-alert-log'
+import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
+import { callSourceLabel } from '@/lib/lead-source-label'
+import { formatPhoneDisplay } from '@/lib/lead-display'
+import { after } from 'next/server'
 import type { TrackingNumber } from '@prisma/client'
 
 /**
@@ -235,7 +239,97 @@ export async function recordCall(
     } catch (error) {
       console.error('[Twilio] Call alert failed:', error)
     }
+    // After the alert, and in its own try: a CRM that is down must not cost
+    // the shop its alert, and the alert must not cost the CRM its call.
+    await forwardCall(number, facts, leadId, missed, outcome.label)
   }
 
   return leadId
+}
+
+/**
+ * SEND THE CALL TO THE SHOP'S CRM, for destinations that opted in
+ * (`WebhookDestination.sendCalls`). Auto Glass Kings' owner works his
+ * HighLevel and saw only the form leads there — every tracked call lived in
+ * this app alone.
+ *
+ * EVERY call with a known outcome, once (the CallSid's outcome lands once).
+ * NOT gated on "first contact today" the way the alert is: the alert is an
+ * interruption and one a day is plenty, but a CRM is a record, and the record
+ * of a form-then-call enquiry should show the call. `repeat_contact_today`
+ * says which it was, so a workflow can branch on it.
+ *
+ * THE KEYS ARE THE FORM'S KEYS (widget.js), blank where a call has nothing,
+ * so a workflow mapped from form leads fills the same contact fields from a
+ * call without being remapped. What only a call has is added beside them.
+ */
+async function forwardCall(
+  number: TrackingNumber & { client: { id: string; timezone: string } },
+  facts: CallFacts,
+  leadId: string,
+  missed: boolean,
+  outcomeLabel: string
+): Promise<void> {
+  try {
+    const earliest = await earliestSameDayContact({
+      clientId: number.clientId,
+      leadId,
+      phone: facts.from,
+      timezone: number.client.timezone,
+    })
+    // The person's earlier lead today, when there is one: a call after a
+    // form is the same enquiry, and the form knew where they came from.
+    const earlier =
+      !earliest.isEarliest && earliest.earliestId
+        ? await prisma.lead.findUnique({
+            where: { id: earliest.earliestId },
+            select: { trafficSource: true, trafficMedium: true },
+          })
+        : null
+    const source = callSourceLabel(number, earlier)
+    const phoneFormatted = formatPhoneDisplay(facts.from) || facts.from
+    const spoken = spokenFor(facts.durationSeconds)
+    const summary = missed
+      ? `Missed call from ${phoneFormatted} (${outcomeLabel.toLowerCase()}).`
+      : `Answered call from ${phoneFormatted}${spoken ? `, ${spoken}` : ''}.`
+    const payload = {
+      // The form's keys — see the note above.
+      first_name: '',
+      last_name: '',
+      full_name: '',
+      phone: facts.from,
+      phone_formatted: phoneFormatted,
+      email: '',
+      service: '',
+      vehicle: '',
+      postal_code: '',
+      message: summary,
+      notes: summary,
+      lead_summary: summary,
+      source,
+      form_name: 'glassleads-call',
+      submitted_at: new Date().toISOString(),
+      // Only a call has these.
+      lead_type: 'call',
+      call_outcome: missed ? 'missed' : 'answered',
+      call_status: facts.status ?? '',
+      call_duration_seconds: facts.durationSeconds ?? 0,
+      tracking_number: facts.to,
+      tracking_number_label: number.label ?? '',
+      repeat_contact_today: earliest.isEarliest ? 'no' : 'yes',
+    }
+    const ids = await createDeliveriesForLead(number.clientId, leadId, payload, { kind: 'call' })
+    if (ids.length === 0) return
+    console.log(`[Twilio] Queued ${ids.length} outbound call deliveries for lead ${leadId} (source: ${source})`)
+    const send = async () => {
+      for (const id of ids) await attemptDelivery(id)
+    }
+    try {
+      after(send)
+    } catch {
+      // Outside a request (a script): the cron sweep picks PENDING rows up.
+    }
+  } catch (error) {
+    console.error('[Twilio] Call forwarding failed:', error)
+  }
 }

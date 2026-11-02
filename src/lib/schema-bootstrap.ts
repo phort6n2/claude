@@ -840,7 +840,17 @@ export const REGIONAL_NUMBER_SQL: string[] = [
   `ALTER TABLE "TrackingNumber" ADD COLUMN IF NOT EXISTS "adCampaignIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]`,
 ]
 
+/**
+ * A webhook destination can opt in to receiving tracked CALLS as well as form
+ * leads (call-lead.ts). Off for every existing destination, so no shop's CRM
+ * workflow starts receiving calls it was never built for.
+ */
+export const WEBHOOK_CALLS_SQL: string[] = [
+  `ALTER TABLE "WebhookDestination" ADD COLUMN IF NOT EXISTS "sendCalls" BOOLEAN NOT NULL DEFAULT false`,
+]
+
 export const BOOTSTRAP_SQL: string[] = [
+  ...WEBHOOK_CALLS_SQL,
   ...REGIONAL_NUMBER_SQL,
   ...ALERT_LOG_SQL,
   ...SERVICE_HERO_SQL,

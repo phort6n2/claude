@@ -295,6 +295,27 @@ arrive from the hosted sites' own form and from embedded widgets.
   UET conversions stay quiet; the Meta event goes to Test Events only, and
   only while a Test Events code is set.
 
+### Forwarding leads to a shop's own CRM
+
+`webhook-forwarding.ts` (`WebhookDestination`, Lead delivery → webhooks),
+`lead-source-label.ts`, `scripts/check-lead-source-label.ts`.
+
+- **A readable `source` rides on every forwarded lead** ("Google Ads",
+  "Google (organic)", "Facebook Ads", "Direct", "Phone call"…), decided from the
+  same `traffic` the lead row stores. The payload carried traffic_source, UTMs
+  and click ids and nothing NAMED source, so HighLevel's contact Source stayed
+  blank — Auto Glass Kings' report. A sender's own `source` is never replaced.
+- **CALLS ARE FORWARDED ONLY TO A DESTINATION THAT OPTED IN** (`sendCalls`,
+  bootstrap `WEBHOOK_CALLS_SQL`, the "Also send tracked calls" tick), because a
+  workflow built for forms may auto-text whoever arrives and a caller who has
+  already spoken to the shop must not be thanked for a quote request. Every
+  call with a known outcome, once, using the FORM's keys (blank where a call
+  has nothing) plus `lead_type: call`, `call_outcome`, `repeat_contact_today`.
+- **A call's source is never a guess**: the Meta/Microsoft number → that ad
+  platform; an earlier same-day lead from the same caller → its source; else
+  "Phone call". The default number is everyone's, so "Google Ads" for it would
+  be the flattering lie.
+
 ### The quote form
 
 `WidgetMount` in `site-body.tsx` renders a **real, working `<form method="post">`**

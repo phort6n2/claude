@@ -9,6 +9,7 @@ import {
   mergeAttributionIntoCanonical,
 } from '@/lib/lead-dedup'
 import { createDeliveriesForLead, attemptDelivery } from '@/lib/webhook-forwarding'
+import { leadSourceLabel } from '@/lib/lead-source-label'
 // Aliased: push-notifications already exports a notifyNewLead (admin web push).
 import { notifyNewLead as notifyLeadRecipients } from '@/lib/lead-notifications'
 import { alertEntry, recordAlert } from '@/lib/lead-alert-log'
@@ -838,11 +839,18 @@ async function handleLeadPost(request: NextRequest): Promise<NextResponse> {
     // anything that fails is retried by the cron sweep. A client with no
     // destinations configured skips all of this.
     try {
-      const deliveryIds = await createDeliveriesForLead(
-        client.id,
-        lead.id,
-        payloadWithoutHeaders
-      )
+      const deliveryIds = await createDeliveriesForLead(client.id, lead.id, {
+        ...payloadWithoutHeaders,
+        // A READABLE `source` (lib/lead-source-label.ts). The payload carried
+        // traffic_source/medium, UTMs and click ids and nothing NAMED source,
+        // so a HighLevel contact's Source stayed blank — reported by Auto
+        // Glass Kings. Decided from the same `traffic` the lead row stores, so
+        // the CRM and this app agree. Added only when the sender did not
+        // already supply one: a post that arrived with its own `source` is
+        // forwarded as it came.
+        ...(payloadWithoutHeaders.source == null ? { source: leadSourceLabel({ trafficSource: traffic.source, trafficMedium: traffic.medium }) } : {}),
+        lead_type: leadSource === 'PHONE' ? 'call' : 'form',
+      })
       if (deliveryIds.length > 0) {
         console.log(
           `[HighLevel Webhook] Queued ${deliveryIds.length} outbound deliveries for lead ${lead.id}`

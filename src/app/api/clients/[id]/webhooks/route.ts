@@ -43,6 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         label: d.label,
         url: d.url,
         enabled: d.enabled,
+        sendCalls: d.sendCalls,
         createdAt: d.createdAt,
         lastDelivery: d.deliveries[0] ?? null,
       })),

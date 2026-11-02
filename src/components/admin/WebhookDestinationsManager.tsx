@@ -10,6 +10,8 @@ interface WebhookDestinationRow {
   label: string
   url: string
   enabled: boolean
+  /** Also forward tracked calls (off by default — see the toggle below). */
+  sendCalls?: boolean
   lastDelivery: {
     status: 'PENDING' | 'SUCCESS' | 'FAILED'
     attempts: number
@@ -63,6 +65,26 @@ export default function WebhookDestinationsManager({ clientId }: { clientId: str
       setError('Failed to add destination')
     } finally {
       setAdding(false)
+    }
+  }
+
+  /** Optimistic, then reconciled — the autosaving-card convention. */
+  async function toggleCalls(dest: WebhookDestinationRow) {
+    const next = !dest.sendCalls
+    setDestinations((prev) => prev.map((d) => (d.id === dest.id ? { ...d, sendCalls: next } : d)))
+    setError(null)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/webhooks/${dest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sendCalls: next }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update destination')
+      setDestinations((prev) => prev.map((d) => (d.id === dest.id ? { ...d, sendCalls: !!data.sendCalls } : d)))
+    } catch (err) {
+      setDestinations((prev) => prev.map((d) => (d.id === dest.id ? { ...d, sendCalls: !next } : d)))
+      setError(err instanceof Error ? err.message : 'Failed to update destination')
     }
   }
 
@@ -175,6 +197,26 @@ export default function WebhookDestinationsManager({ clientId }: { clientId: str
                       )}
                     </div>
                     <code className="block text-xs text-gray-500 truncate mt-1">{dest.url}</code>
+                    {/* OFF BY DEFAULT: a workflow built for form leads may
+                        auto-text whoever it receives, and a caller who has
+                        already spoken to the shop must not be thanked for
+                        their quote request. Turn on once the workflow can
+                        branch on lead_type. */}
+                    <label className="mt-2 flex items-start gap-2 text-xs text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={!!dest.sendCalls}
+                        onChange={() => toggleCalls(dest)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        Also send tracked calls
+                        <span className="block text-gray-500">
+                          One per caller per day, with <code>lead_type: call</code>, <code>source</code> and how the
+                          call ended. Check the workflow will not auto-message a caller first.
+                        </span>
+                      </span>
+                    </label>
                     {last && (
                       <p className="text-xs mt-1">
                         <span
